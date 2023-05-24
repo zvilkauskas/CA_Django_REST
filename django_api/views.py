@@ -1,8 +1,9 @@
 from django.shortcuts import render
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, mixins, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from .models import Post, PostLike, Comment, CommentLike
-from .serializers import PostSerializer, CommentSerializer
+from .serializers import PostSerializer, CommentSerializer, PostLikeSerializer
 
 
 # class PostList(generics.ListAPIView):
@@ -65,9 +66,35 @@ class CommentDetail(generics.RetrieveUpdateDestroyAPIView):
         else:
             raise ValidationError("You can't edit another user comments")
 
-
     def delete(self, request, *args, **kwargs):
         if Comment.objects.filter(pk=kwargs['pk'], user=request.user).exists():
             return self.destroy(request, *args, **kwargs)
         else:
             raise ValidationError("You can't delete another user comments!")
+
+
+class PostLikeCreate(generics.ListCreateAPIView, mixins.DestroyModelMixin):
+    serializer_class = PostLikeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Method to return specific PostLike objects.
+        These are based on the logged-in user and specific post in question
+        """
+        user = self.request.user
+        post = Post.objects.get(pk=self.kwargs['pk'])
+        return PostLike.objects.filter(post=post, user=user)
+
+    def perform_create(self, serializer):
+        if self.get_queryset().exists():
+            raise ValidationError('Jūs jau palikote patiktuką šiam pranešimui!')
+        post = Post.objects.get(pk=self.kwargs['pk'])
+        serializer.save(user=self.request.user, post=post)
+
+    def delete(self, request, *args, **kwargs):
+        # Can only delete an object which exists
+        if self.get_queryset().exists():
+            self.get_queryset().delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValidationError('Jūs nepalikote patiktuko po šiuo pranešimu!')
