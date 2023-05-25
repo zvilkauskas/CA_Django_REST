@@ -42,7 +42,14 @@ INSTALLED_APPS = [
     # naujai irasyti pradedant projekta
     'rest_framework',
     'django_api',
+    'rest_framework.authtoken',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

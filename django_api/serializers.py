@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Post, Comment, CommentLike, PostLike
+from django.contrib.auth.models import User
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -33,7 +34,27 @@ class PostSerializer(serializers.ModelSerializer):
 
     def get_likes(self, post):
         return PostLike.objects.filter(post=post).count()
+
+
 class PostLikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = PostLike
         fields = ['postlike_id']
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        # User an existing Django user model
+        model = User
+        # We only care about username and password
+        fields = ('username', 'password')
+        # Do not allow the password to be read cia the API
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        # We override this function only because we want to store the password safely
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
